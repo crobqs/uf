@@ -1,9 +1,10 @@
-#include "generic_set.h"
+#include "gset.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
-static void resize_if_needed(GenericSet* set) {
+// Resize the set's storage if needed
+static void gset_resize_if_needed(GSet* set) {
     if (set->size >= set->capacity) {
         set->capacity *= 2;
         set->data = realloc(set->data, set->capacity * set->element_size);
@@ -14,9 +15,9 @@ static void resize_if_needed(GenericSet* set) {
     }
 }
 
-void set_init(GenericSet* set, size_t element_size, size_t capacity,
-              size_t (*hash_func)(const void*),
-              bool (*equals_func)(const void*, const void*)) {
+void gset_init(GSet* set, size_t element_size, size_t capacity,
+               size_t (*hash_func)(const void*),
+               bool (*equals_func)(const void*, const void*)) {
     set->data = malloc(capacity * element_size);
     if (!set->data) {
         perror("Failed to initialize set");
@@ -29,29 +30,29 @@ void set_init(GenericSet* set, size_t element_size, size_t capacity,
     set->equals_func = equals_func;
 }
 
-void set_destroy(GenericSet* set) {
+void gset_destroy(GSet* set) {
     free(set->data);
     set->data = NULL;
     set->size = 0;
     set->capacity = 0;
 }
 
-bool set_add(GenericSet* set, const void* element) {
-    if (set_contains(set, element)) {
+bool gset_add(GSet* set, const void* element) {
+    if (gset_contains(set, element)) {
         return false; // Element already exists
     }
-    resize_if_needed(set);
+    gset_resize_if_needed(set);
     void* target = (char*)set->data + set->size * set->element_size;
     memcpy(target, element, set->element_size);
     set->size++;
     return true;
 }
 
-bool set_remove(GenericSet* set, const void* element) {
+bool gset_remove(GSet* set, const void* element) {
     for (size_t i = 0; i < set->size; i++) {
         void* current = (char*)set->data + i * set->element_size;
         if (set->equals_func(current, element)) {
-            memmove(current, current + set->element_size, 
+            memmove(current, current + set->element_size,
                     (set->size - i - 1) * set->element_size);
             set->size--;
             return true;
@@ -60,7 +61,7 @@ bool set_remove(GenericSet* set, const void* element) {
     return false;
 }
 
-bool set_contains(GenericSet* set, const void* element) {
+bool gset_contains(const GSet* set, const void* element) {
     for (size_t i = 0; i < set->size; i++) {
         void* current = (char*)set->data + i * set->element_size;
         if (set->equals_func(current, element)) {
@@ -70,39 +71,39 @@ bool set_contains(GenericSet* set, const void* element) {
     return false;
 }
 
-void set_union(GenericSet* result, const GenericSet* set1, const GenericSet* set2) {
-    set_init(result, set1->element_size, set1->size + set2->size,
-             set1->hash_func, set1->equals_func);
+void gset_union(GSet* result, const GSet* set1, const GSet* set2) {
+    gset_init(result, set1->element_size, set1->size + set2->size,
+              set1->hash_func, set1->equals_func);
     for (size_t i = 0; i < set1->size; i++) {
-        set_add(result, (char*)set1->data + i * set1->element_size);
+        gset_add(result, (char*)set1->data + i * set1->element_size);
     }
     for (size_t i = 0; i < set2->size; i++) {
-        set_add(result, (char*)set2->data + i * set2->element_size);
+        gset_add(result, (char*)set2->data + i * set2->element_size);
     }
 }
 
-void set_intersection(GenericSet* result, const GenericSet* set1, const GenericSet* set2) {
-    set_init(result, set1->element_size, set1->size < set2->size ? set1->size : set2->size,
-             set1->hash_func, set1->equals_func);
+void gset_intersection(GSet* result, const GSet* set1, const GSet* set2) {
+    gset_init(result, set1->element_size, set1->size < set2->size ? set1->size : set2->size,
+              set1->hash_func, set1->equals_func);
     for (size_t i = 0; i < set1->size; i++) {
         void* element = (char*)set1->data + i * set1->element_size;
-        if (set_contains(set2, element)) {
-            set_add(result, element);
+        if (gset_contains(set2, element)) {
+            gset_add(result, element);
         }
     }
 }
 
-void set_difference(GenericSet* result, const GenericSet* set1, const GenericSet* set2) {
-    set_init(result, set1->element_size, set1->size,
-             set1->hash_func, set1->equals_func);
+void gset_difference(GSet* result, const GSet* set1, const GSet* set2) {
+    gset_init(result, set1->element_size, set1->size,
+              set1->hash_func, set1->equals_func);
     for (size_t i = 0; i < set1->size; i++) {
         void* element = (char*)set1->data + i * set1->element_size;
-        if (!set_contains(set2, element)) {
-            set_add(result, element);
+        if (!gset_contains(set2, element)) {
+            gset_add(result, element);
         }
     }
 }
 
-size_t set_size(const GenericSet* set) {
+size_t gset_size(const GSet* set) {
     return set->size;
 }
